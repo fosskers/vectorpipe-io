@@ -28,7 +28,7 @@ object IO extends App {
     Logger.getRootLogger().setLevel(Level.ERROR)
 
     /* Path to a OSM XML file */
-    val path: String = "data/vancouver.osm"
+    val path: String = "data/north-van.osm"
 
     /* For writing a compressed Tile Layer */
     val catalog: String = "/home/colin/tiles/"
@@ -44,10 +44,6 @@ object IO extends App {
 
     val layout: LayoutDefinition =
       ZoomedLayoutScheme.layoutForZoom(15, WebMercator.worldExtent, 512)
-
-    val meta = TileLayerMetadata(
-      DoubleCellType, layout, layout.extent, WebMercator, KeyBounds(SpatialKey(5155, 11206), SpatialKey(5235, 11243))
-    )
 
     VP.fromLocalXML(path) match {
       case Left(e) => println(e)
@@ -65,9 +61,22 @@ object IO extends App {
         /* Create the VectorTiles */
         val tiles: RDD[(SpatialKey, VectorTile)] = VP.toVectorTile(Collate.byAnalytics, layout, fgrid)
 
+       val minKey = tiles.map(_._1).reduce({ case (acc, k) =>
+          SpatialKey(acc.col.min(k.col), acc.row.min(k.row))
+        })
+
+        val maxKey = tiles.map(_._1).reduce({ case (acc, k) =>
+          SpatialKey(acc.col.max(k.col), acc.row.max(k.row))
+        })
+
+        /* Construct metadata for the Layer (while fudging the CellType) */
+        val meta = TileLayerMetadata(
+          DoubleCellType, layout, layout.extent, WebMercator, KeyBounds(minKey, maxKey)
+        )
+
         println(s"TOTAL TILES: ${tiles.count}")
 
-        writer.write(LayerId("vancouver", 15), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
+        writer.write(LayerId("north-van", 15), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
 
 //        tiles.saveToHadoop(catalog)({ (k,v) => v.toBytes })
       }
