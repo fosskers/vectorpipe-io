@@ -8,6 +8,7 @@ import geotrellis.spark.io.file._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.tiling._
 import geotrellis.vectortile.VectorTile
+import geotrellis.vectortile.spark._
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
@@ -61,18 +62,11 @@ object IO extends App {
         /* Create the VectorTiles */
         val tiles: RDD[(SpatialKey, VectorTile)] = VP.toVectorTile(Collate.byAnalytics, layout, fgrid)
 
-       val minKey = tiles.map(_._1).reduce({ case (acc, k) =>
-          SpatialKey(acc.col.min(k.col), acc.row.min(k.row))
-        })
+        val bounds: KeyBounds[SpatialKey] =
+          tiles.map({ case (key, _) => KeyBounds(key, key) }).reduce(_ combine _)
 
-        val maxKey = tiles.map(_._1).reduce({ case (acc, k) =>
-          SpatialKey(acc.col.max(k.col), acc.row.max(k.row))
-        })
-
-        /* Construct metadata for the Layer (while fudging the CellType) */
-        val meta = TileLayerMetadata(
-          DoubleCellType, layout, layout.extent, WebMercator, KeyBounds(minKey, maxKey)
-        )
+        /* Construct metadata for the Layer */
+        val meta = LayerMetadata(layout, bounds)
 
         println(s"TOTAL TILES: ${tiles.count}")
 
