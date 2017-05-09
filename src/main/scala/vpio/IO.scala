@@ -12,8 +12,7 @@ import geotrellis.vectortile.spark._
 import org.apache.log4j.{Level, Logger}
 import org.apache.spark._
 import org.apache.spark.rdd.RDD
-import vectorpipe.{Clip, Collate, VectorPipe => VP}
-import vectorpipe.osm.{reproject => reproj, _}
+import vectorpipe._
 
 // --- //
 
@@ -46,21 +45,25 @@ object IO extends App {
     val layout: LayoutDefinition =
       ZoomedLayoutScheme.layoutForZoom(15, WebMercator.worldExtent, 512)
 
-    VP.fromLocalXML(path) match {
+    osm.fromLocalXML(path) match {
       case Left(e) => println(e)
       case Right((ns,ws,rs)) => {
 
         /* Assumes that OSM XML is in LatLng */
-        val latlngFeats: RDD[OSMFeature] = VP.toFeatures(ns, ws, rs)
+        val latlngFeats: RDD[osm.OSMFeature] =
+          osm.toFeatures(ns, ws, rs)
 
         /* Reproject into WebMercator, the default for VTs */
-        val wmFeats: RDD[OSMFeature] = latlngFeats.map(reproj(_, LatLng, WebMercator))
+        val wmFeats: RDD[osm.OSMFeature] =
+          latlngFeats.map(_.reproject(LatLng, WebMercator))
 
         /* Associated each Feature with a SpatialKey */
-        val fgrid: RDD[(SpatialKey, Iterable[OSMFeature])] = VP.toGrid(Clip.byHybrid, layout, wmFeats)
+        val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
+          VectorPipe.toGrid(Clip.byHybrid, layout, wmFeats)
 
         /* Create the VectorTiles */
-        val tiles: RDD[(SpatialKey, VectorTile)] = VP.toVectorTile(Collate.byAnalytics, layout, fgrid)
+        val tiles: RDD[(SpatialKey, VectorTile)] =
+          VectorPipe.toVectorTile(Collate.byAnalytics, layout, fgrid)
 
         val bounds: KeyBounds[SpatialKey] =
           tiles.map({ case (key, _) => KeyBounds(key, key) }).reduce(_ combine _)
@@ -71,6 +74,8 @@ object IO extends App {
         println(s"TOTAL TILES: ${tiles.count}")
 
         writer.write(LayerId("north-van", 15), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
+
+        tiles.take(3).foreach({ case (_,v) => println(v.pretty) })
 
 //        tiles.saveToHadoop(catalog)({ (k,v) => v.toBytes })
       }
