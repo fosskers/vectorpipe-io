@@ -17,9 +17,23 @@ resource "aws_emr_cluster" "emrSparkCluster" {
     instance_profile = "EMR_EC2_DefaultRole"
   }
 
-  master_instance_type = "m3.xlarge"
-  core_instance_type   = "m3.xlarge"
-  core_instance_count  = 2               # Increase as needed.
+  instance_group {
+    bid_price = "0.05"
+    instance_count = 1
+    instance_role = "MASTER"
+    instance_type = "m3.xlarge"
+    name = "emrVectorPipeOrcDemo-MasterGroup"
+  }
+
+  instance_group {
+    bid_price = "0.05"
+    instance_count = 2
+    instance_role = "CORE"
+    instance_type = "m3.xlarge"
+    name = "emrVectorPipeOrcDemo-CoreGroup"
+  }
+
+  # Location to dump logs
   log_uri              = "${var.s3_uri}"
 
   # These can be altered freely, they don't affect the config.
