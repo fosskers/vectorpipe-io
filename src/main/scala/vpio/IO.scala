@@ -19,9 +19,13 @@ import vectorpipe.util.LayerMetadata
 object IO extends App {
   override def main(args: Array[String]): Unit = {
 
+    /* Settings compatible for both local and EMR execution */
+    val conf = new SparkConf()
+      .setIfMissing("spark.master", "local[*]")
+      .setAppName("vp-orc-io")
+
     implicit val ss: SparkSession = SparkSession.builder
-      .master("local[*]")
-      .appName("vp-orc-io")
+      .config(conf)
       .enableHiveSupport
       .getOrCreate
 
@@ -29,7 +33,7 @@ object IO extends App {
     Logger.getRootLogger().setLevel(Level.ERROR)
 
     /* Necessary for reading ORC files off S3 */
-    useS3(ss)
+    // useS3(ss)
 
     val source: String = "vancouver"
 

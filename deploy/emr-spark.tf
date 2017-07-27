@@ -9,14 +9,18 @@ provider "aws" {
 resource "aws_emr_cluster" "emrSparkCluster" {
   name          = "emrVectorpipeOrcDemo"
   release_label = "emr-5.7.0"         # 2017 July
-  applications  = ["Hadoop", "Spark", "Hive"]  # TODO Is Hive really needed here?
+
+  # This it will work if only `Spark` is named here, but booting the cluster seems
+  # to be much faster when `Hadoop` is included. Ingests, etc., will succeed
+  # even if `Hadoop` is missing here.
+  applications  = ["Hadoop", "Spark"]
 
   ec2_attributes {
-    # key_name         = "${var.key_name}"
-    # subnet_id        = "subnet-c5fefdb1"
-    instance_profile = "EMR_EC2_DefaultRole"
+    instance_profile = "EMR_EC2_DefaultRole"  # This seems to be the only necessary field.
   }
 
+  # MASTER group must have an instance_count of 1.
+  # `xlarge` seems to be the smallest type they'll allow (large didn't work).
   instance_group {
     bid_price = "0.05"
     instance_count = 1
@@ -43,24 +47,11 @@ resource "aws_emr_cluster" "emrSparkCluster" {
     env  = "env"
   }
 
-  # configurations = "spark-env.json"  # TODO Unsure if needed.
-
   # This is the effect of `aws emr create-cluster --use-default-roles`.
   service_role = "EMR_DefaultRole"
-
-  # provisioner "remote-exec" {
-
-  #   # Necessary to massage settings the way AWS wants them.
-  #   connection {
-  #     type        = "ssh"
-  #     user        = "hadoop"
-  #     host        = "${aws_emr_cluster.emrSparkCluster.master_public_dns}"
-  #     private_key = "${file("${var.pem_path}")}"
-  #   }
-  # }
 }
 
 # Pipable to other programs.
-output "emrDNS" {
-  value = "${aws_emr_cluster.emrSparkCluster.master_public_dns}"
+output "emrID" {
+  value = "${aws_emr_cluster.emrSparkCluster.id}"
 }
