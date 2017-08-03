@@ -13,70 +13,84 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql._
 import vectorpipe._
 import vectorpipe.util.LayerMetadata
+import cats.implicits._
+import com.monovore.decline._
 
 // --- //
 
-object IO extends App {
-  override def main(args: Array[String]): Unit = {
+object IO extends CommandApp(
+  name = "vp-orc-io",
+  header = "Convert an OSM ORC file into VectorTiles",
+  main = {
 
-    /* Settings compatible for both local and EMR execution */
-    val conf = new SparkConf()
-      .setIfMissing("spark.master", "local[*]")
-      .setAppName("vp-orc-io")
+    /* CLI option handling */
+    val orcO = Opts.option[String]("orc", help = "Location of the .orc file to process")
+    val bucketO = Opts.option[String]("bucket", help = "S3 bucket to write VTs to")
+    val prefixO = Opts.option[String]("key", help = "S3 directory (in bucket) to write to")
+    val layerO = Opts.option[String]("layer", help = "Name of the output Layer")
+    val localF = Opts.flag("local", help = "Is this to be run locally, not on EMR?").orFalse
 
-    implicit val ss: SparkSession = SparkSession.builder
-      .config(conf)
-      .enableHiveSupport
-      .getOrCreate
+    (orcO |@| bucketO |@| prefixO |@| layerO |@| localF).map { (orc, bucket, prefix, layer, local) =>
 
-    /* Silence the damn INFO logger */
-    Logger.getRootLogger().setLevel(Level.ERROR)
+      println(s"ORC: ${orc}")
+      println(s"OUTPUT: ${bucket}/${prefix}")
+      println(s"LAYER: ${layer}")
 
-    /* Necessary for reading ORC files off S3 */
-    // useS3(ss)
+      /* Settings compatible for both local and EMR execution */
+      val conf = new SparkConf()
+        .setIfMissing("spark.master", "local[*]")
+        .setAppName("vp-orc-io")
 
-    val source: String = "vancouver"
+      implicit val ss: SparkSession = SparkSession.builder
+        .config(conf)
+        .enableHiveSupport
+        .getOrCreate
 
-    /* Path to an OSM ORC file */
-    val path: String = s"s3://vectortiles/orc/${source}.orc"
+      /* Silence the damn INFO logger */
+      Logger.getRootLogger().setLevel(Level.ERROR)
 
-    /* For writing a compressed Tile Layer */
-    val store = S3AttributeStore("vectortiles", "orc-catalog")
-    val writer = S3LayerWriter(store)
+      /* Necessary for locally reading ORC files off S3 */
+      if (local) useS3(ss)
 
-    val layout: LayoutDefinition =
-      ZoomedLayoutScheme.layoutForZoom(14, WebMercator.worldExtent, 512)
+      /* For writing a compressed Tile Layer */
+      val writer = S3LayerWriter(S3AttributeStore(bucket, prefix))
 
-    osm.fromORC(path) match {
-      case Left(e) => println(e)
-      case Right((ns,ws,rs)) => {
+      val layout: LayoutDefinition =
+        ZoomedLayoutScheme.layoutForZoom(14, WebMercator.worldExtent, 512)
 
-        /* Assumes that OSM ORC is in LatLng */
-        val latlngFeats: RDD[osm.OSMFeature] =
-          osm.toFeatures(ns.repartition(100), ws.repartition(10), rs)
+      osm.fromORC(orc) match {
+        case Left(e) => println(e)
+        case Right((ns,ws,rs)) => {
 
-        /* Reproject into WebMercator, the default for VTs */
-        val wmFeats: RDD[osm.OSMFeature] =
-          latlngFeats.repartition(100).map(_.reproject(LatLng, WebMercator))
+          /* Assumes that OSM ORC is in LatLng */
+          val latlngFeats: RDD[osm.OSMFeature] =
+            osm.toFeatures(ns.repartition(100), ws.repartition(10), rs)
 
-        /* Associated each Feature with a SpatialKey */
-        val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
-          VectorPipe.toGrid(Clip.byHybrid, layout, wmFeats)
+          /* Reproject into WebMercator, the default for VTs */
+          val wmFeats: RDD[osm.OSMFeature] =
+            latlngFeats.repartition(100).map(_.reproject(LatLng, WebMercator))
 
-        /* Create the VectorTiles */
-        val tiles: RDD[(SpatialKey, VectorTile)] =
-          VectorPipe.toVectorTile(Collate.byAnalytics, layout, fgrid)
+          /* Associated each Feature with a SpatialKey */
+          val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
+            VectorPipe.toGrid(Clip.byHybrid, layout, wmFeats)
 
-        val bounds: KeyBounds[SpatialKey] =
-          tiles.map({ case (key, _) => KeyBounds(key, key) }).reduce(_ combine _)
+          /* Create the VectorTiles */
+          val tiles: RDD[(SpatialKey, VectorTile)] =
+            VectorPipe.toVectorTile(Collate.byAnalytics, layout, fgrid)
 
-        /* Construct metadata for the Layer */
-        val meta = LayerMetadata(layout, bounds)
+          val bounds: KeyBounds[SpatialKey] =
+            tiles.map({ case (key, _) => KeyBounds(key, key) }).reduce(_ combine _)
 
-        writer.write(LayerId(source, 14), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
+          /* Construct metadata for the Layer */
+          val meta = LayerMetadata(layout, bounds)
+
+          writer.write(LayerId(layer, 14), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
+        }
       }
-    }
 
-    ss.stop()
+      ss.stop()
+
+      println("Done.")
+    }
   }
-}
+)

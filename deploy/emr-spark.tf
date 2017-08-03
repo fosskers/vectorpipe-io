@@ -31,7 +31,7 @@ resource "aws_emr_cluster" "emrSparkCluster" {
 
   instance_group {
     bid_price      = "0.05"
-    instance_count = 2
+    instance_count = 20
     instance_role  = "CORE"
     instance_type  = "m3.xlarge"
     name           = "emrVectorPipeOrcDemo-CoreGroup"

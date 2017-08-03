@@ -4,12 +4,17 @@ version := "1.0.0"
 
 scalaVersion := "2.11.11"
 
+/* To massage `cats` a little bit */
 scalacOptions := Seq(
   "-Ypartial-unification"
 )
 
+/* For `decline` dependency */
+resolvers += Resolver.bintrayRepo("bkirwi", "maven")
+
 libraryDependencies ++= Seq(
   "com.azavea"                  %% "vectorpipe"                  % "1.0.0",
+  "com.monovore"                %% "decline"                     % "0.2.2",
   "org.apache.hadoop"           %  "hadoop-aws"                  % "2.8.1" % "provided",
   "org.apache.spark"            %% "spark-core"                  % "2.2.0" % "provided",
   "org.apache.spark"            %% "spark-hive"                  % "2.2.0" % "provided",
