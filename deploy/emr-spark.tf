@@ -1,14 +1,14 @@
 # Marks AWS as a resource provider.
 provider "aws" {
-  access_key = "${var.access_key}"
-  secret_key = "${var.secret_key}"
-  region     = "${var.region}"
+  # access_key = "${var.access_key}"
+  # secret_key = "${var.secret_key}"
+  region = "${var.region}"
 }
 
 # `aws_emr_cluster` is built-in to Terraform. We name ours `emrSparkCluster`.
 resource "aws_emr_cluster" "emrSparkCluster" {
   name          = "emrVectorpipeOrcDemo"
-  release_label = "emr-5.7.0"            # 2017 July
+  release_label = "emr-5.8.0"            # 2017 August
 
   # This it will work if only `Spark` is named here, but booting the cluster seems
   # to be much faster when `Hadoop` is included. Ingests, etc., will succeed
@@ -17,6 +17,7 @@ resource "aws_emr_cluster" "emrSparkCluster" {
 
   ec2_attributes {
     instance_profile = "EMR_EC2_DefaultRole" # This seems to be the only necessary field.
+    key_name         = "${var.key_name}"
   }
 
   # MASTER group must have an instance_count of 1.
@@ -31,7 +32,7 @@ resource "aws_emr_cluster" "emrSparkCluster" {
 
   instance_group {
     bid_price      = "0.05"
-    instance_count = 20
+    instance_count = 10
     instance_role  = "CORE"
     instance_type  = "m3.xlarge"
     name           = "emrVectorPipeOrcDemo-CoreGroup"

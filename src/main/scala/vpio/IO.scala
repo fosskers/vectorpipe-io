@@ -3,6 +3,7 @@ package vpio
 import geotrellis.proj4.{LatLng, WebMercator}
 import geotrellis.spark._
 import geotrellis.spark.io._
+import geotrellis.spark.io.file._
 import geotrellis.spark.io.index.ZCurveKeyIndexMethod
 import geotrellis.spark.io.s3.{S3AttributeStore, S3LayerWriter}
 import geotrellis.spark.tiling._
@@ -54,6 +55,7 @@ object IO extends CommandApp(
 
       /* For writing a compressed Tile Layer */
       val writer = S3LayerWriter(S3AttributeStore(bucket, prefix))
+      // val writer = FileLayerWriter(FileAttributeStore("/home/colin/tiles/"))
 
       val layout: LayoutDefinition =
         ZoomedLayoutScheme.layoutForZoom(14, WebMercator.worldExtent, 512)
@@ -68,7 +70,7 @@ object IO extends CommandApp(
 
           /* Reproject into WebMercator, the default for VTs */
           val wmFeats: RDD[osm.OSMFeature] =
-            latlngFeats.repartition(100).map(_.reproject(LatLng, WebMercator))
+            latlngFeats.map(_.reproject(LatLng, WebMercator))
 
           /* Associated each Feature with a SpatialKey */
           val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
@@ -76,7 +78,7 @@ object IO extends CommandApp(
 
           /* Create the VectorTiles */
           val tiles: RDD[(SpatialKey, VectorTile)] =
-            VectorPipe.toVectorTile(Collate.byAnalytics, layout, fgrid)
+            VectorPipe.toVectorTile(Collate.withoutMetadata, layout, fgrid)
 
           val bounds: KeyBounds[SpatialKey] =
             tiles.map({ case (key, _) => KeyBounds(key, key) }).reduce(_ combine _)
@@ -84,6 +86,7 @@ object IO extends CommandApp(
           /* Construct metadata for the Layer */
           val meta = LayerMetadata(layout, bounds)
 
+          /* Write the tiles */
           writer.write(LayerId(layer, 14), ContextRDD(tiles, meta), ZCurveKeyIndexMethod)
         }
       }

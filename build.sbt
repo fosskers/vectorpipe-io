@@ -13,10 +13,8 @@ scalacOptions := Seq(
 resolvers += Resolver.bintrayRepo("bkirwi", "maven")
 
 libraryDependencies ++= Seq(
-  "com.azavea"                  %% "vectorpipe"                  % "1.0.0",
+  "com.azavea"                  %% "vectorpipe"                  % "1.0.0-SNAPSHOT",
   "com.monovore"                %% "decline"                     % "0.2.2",
-  "org.apache.hadoop"           %  "hadoop-aws"                  % "2.8.1" % "provided",
-  "org.apache.spark"            %% "spark-core"                  % "2.2.0" % "provided",
   "org.apache.spark"            %% "spark-hive"                  % "2.2.0" % "provided",
   "org.locationtech.geotrellis" %% "geotrellis-s3"               % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-spark"            % "1.2.0-SNAPSHOT",
@@ -38,3 +36,7 @@ assemblyMergeStrategy in assembly := {
   case "META-INF/ECLIPSEF.SF" => MergeStrategy.discard
   case _ => MergeStrategy.first
 }
+
+// run --orc s3://vectortiles/orc/europe/andorra.orc --bucket vectortiles --key orc-catalog --layer andorra --local
+// run --orc /home/colin/code/playground/scala/orc/ireland.orc --bucket vectortiles --key orc-catalog --layer ireland --local
+// run --orc /home/colin/code/azavea/vp-io-test/georgia.orc --bucket vectortiles --key orc-catalog --layer georgia --local
