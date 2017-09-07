@@ -1,0 +1,142 @@
+* VectorPipe IO Demo
+
+This is an example of a simple application that uses the [[https://github.com/geotrellis/vectorpipe][VectorPipe]] library
+to convert an ORC file containing OpenStreetMap data into VectorTiles.
+It can be ran both locally and on Amazon's EMR service, provided you have
+the right credentials.
+
+** Dependencies
+
+As of 2017 September 7:
+
+- A locally published SNAPSHOT of [[https://github.com/locationtech/geotrellis][GeoTrellis 1.2.0]]
+- A locally published SNAPSHOT of VectorPipe 1.0
+
+** Running Locally
+
+*** Removing ~provided~
+
+The easiest way to run this demo is through SBT via ~sbt run~. First, you will need
+to unmark the ~spark-hive~ dependency as being ~provided~. After your change, you should see
+something like:
+
+#+BEGIN_SRC scala
+  libraryDependencies ++= Seq(
+    ...
+    "org.apache.spark" %% "spark-hive" % "2.2.0",
+    ...
+  )
+#+END_SRC
+
+*** Command-line Options
+
+~sbt run~ will pass any extra options it's given directly to the ~main~ method.
+This demo uses the [[http://ben.kirw.in/decline/][Decline]] library to handle CLI options, and expects the following:
+
+#+BEGIN_EXAMPLE
+Usage: vp-orc-io --orc <string> --bucket <string> --key <string> --layer <string> [--local]
+
+Convert an OSM ORC file into VectorTiles
+
+Options and flags:
+    --help
+        Display this help text.
+    --orc <string>
+        Location of the .orc file to process
+    --bucket <string>
+        S3 bucket to write VTs to
+    --key <string>
+        S3 directory (in bucket) to write to
+    --layer <string>
+        Name of the output Layer
+    --local
+        Is this to be run locally, not on EMR?
+#+END_EXAMPLE
+
+For example:
+
+#+BEGIN_EXAMPLE
+run --orc s3://vectortiles/orc/europe/andorra.orc --bucket vectortiles --key orc-catalog --layer andorra --local
+#+END_EXAMPLE
+
+The ~--local~ flag is only necessary when running the demo locally and interacting with S3.
+
+*** Writing to your filesystem instead of S3
+
+It's possible to avoid interaction with S3 completely. Within ~IO.scala~ you'll find a section:
+
+#+BEGIN_SRC scala
+  /* For writing a compressed Tile Layer */
+  val writer = S3LayerWriter(S3AttributeStore(bucket, prefix))
+  // val writer = FileLayerWriter(FileAttributeStore("/path/to/catalog/"))
+#+END_SRC
+
+Now you can switch to the ~FileLayerWriter~, alter the path you'd like to write to, and run the demo as before.
+Example:
+
+#+BEGIN_EXAMPLE
+run --orc /home/colin/code/azavea/vp-io-test/georgia.orc --bucket vectortiles --key orc-catalog --layer georgia --local
+#+END_EXAMPLE
+
+You still need to specify ~--bucket~ and ~--key~, but those values won't be used anywhere.
+
+** Running on EMR
+
+This assumes you have AWS credentials and have the ~awscli~ set of programs installed.
+As of 2017 Sept 7, you must also have installed a custom version
+of Terraform and its AWS resource provider [[https://github.com/pomadchin/geotrellis/blob/6e549bfa4d8ec54b1b863835180eca529014a732/scripts/emr/README.md#terraform-setup][via these instructions]]. This will no longer be necessary
+once version 1.0 of the provider is officially released.
+
+*** Creating a Cluster
+
+Within the ~deploy/~ folder, doing the following will create your cluster:
+
+#+BEGIN_EXAMPLE
+terraform apply
+#+END_EXAMPLE
+
+After 5 minutes or so the process will complete and print out the cluster's ID.
+You will need this for later. If you lose track of it, ~terraform show~ will
+print it again for you.
+
+*** Assemble the Demo
+
+First:
+
+#+BEGIN_EXAMPLE
+sbt assembly
+#+END_EXAMPLE
+
+This will create the "uber jar" ~target/scala-2.11/vp-io-test-assembly-1.0.0.jar~.
+Upload this to S3 in order to make it visible to your EMR cluster.
+
+*** Running a Job
+
+Edit ~steps.json~ to match where you uploaded your assembly and what ORC file
+you intend to ingest:
+
+#+BEGIN_SRC js
+  [
+      {
+          "Name": "VectorPipe ORC Demo",
+          "Type": "CUSTOM_JAR",
+          "Jar": "command-runner.jar",
+          "Args": [
+              ...
+              "s3://vectortiles/jars/vp-io-test-assembly-1.0.0.jar",
+              "--orc","s3://vectortiles/orc/europe/finland.orc",
+              "--bucket","vectortiles",
+              "--key","orc-catalog",
+              "--layer","finland"
+          ]
+      }
+  ]
+#+END_SRC
+
+To submit this to EMR:
+
+#+BEGIN_EXAMPLE
+aws emr add-steps --cluster-id <YOUR-CLUSTER-ID> --steps file://./steps.json --region us-east-1
+#+END_EXAMPLE
+
+The job can then be monitored as usual through the EMR UI or FoxyProxy.
