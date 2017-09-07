@@ -74,7 +74,7 @@ object IO extends CommandApp(
 
           /* Associated each Feature with a SpatialKey */
           val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
-            VectorPipe.toGrid(Clip.byHybrid, layout, wmFeats)
+            VectorPipe.toGrid(Clip.byHybrid, VectorPipe.log4j, layout, wmFeats)
 
           /* Create the VectorTiles */
           val tiles: RDD[(SpatialKey, VectorTile)] =
