@@ -14,7 +14,7 @@ resolvers += Resolver.bintrayRepo("bkirwi", "maven")
 
 libraryDependencies ++= Seq(
   "com.azavea"                  %% "vectorpipe"                  % "1.0.0-SNAPSHOT",
-  "com.monovore"                %% "decline"                     % "0.2.2",
+  "com.monovore"                %% "decline"                     % "0.3.0",
   "org.apache.spark"            %% "spark-hive"                  % "2.2.0" % "provided",
   "org.locationtech.geotrellis" %% "geotrellis-s3"               % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-spark"            % "1.2.0-SNAPSHOT",
