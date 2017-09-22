@@ -5,3 +5,6 @@
 /project/target/
 /target/
 /metastore_db/
+/deploy/.terraform/
+/deploy/terraform.tfstate
+/deploy/terraform.tfstate.backup
