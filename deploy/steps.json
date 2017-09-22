@@ -8,18 +8,16 @@
             "--class","vpio.IO",
             "--master","yarn",
             "--deploy-mode","cluster",
-            "--driver-memory","4200M",
-            "--driver-cores","2",
-            "--executor-memory","4200M",
-            "--executor-cores","2",
+            "--driver-memory","5120M",
+            "--driver-cores","3",
+            "--executor-memory","5120M",
+            "--executor-cores","3",
             "--conf","spark.dynamicAllocation.enabled=true",
-            "--conf","spark.yarn.executor.memoryOverhead=700",
-            "--conf","spark.yarn.driver.memoryOverhead=700",
-            "s3://vectortiles/jars/vp-io-test-assembly-1.0.0.jar",
+            "s3://vectortiles/jars/vp-io-test-assembly-rde-1.0.0.jar",
             "--orc","s3://vectortiles/orc/europe/finland.orc",
             "--bucket","vectortiles",
             "--key","orc-catalog",
-            "--layer","finland"
+            "--layer","finland-avt"
         ]
     }
 ]

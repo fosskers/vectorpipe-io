@@ -10,7 +10,7 @@ variable "region" {
 }
 
 # The name of your EC2 key
-variable "key_name" {}
+variable "key_name" { default = "geotrellis-emr" }
 
 # Location to dump EMR logs
-variable "s3_uri" {}
+variable "s3_uri" { default = "s3://vectortiles/orc-emr-logs" }
