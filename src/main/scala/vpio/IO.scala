@@ -66,7 +66,12 @@ object IO extends CommandApp(
 
           /* Assumes that OSM ORC is in LatLng */
           val latlngFeats: RDD[osm.OSMFeature] =
-            osm.toFeatures(ns.repartition(100), ws.repartition(10), rs)
+            osm.toFeatures(
+              VectorPipe.logToLog4j,
+              ns.repartition(100).map(_._2),
+              ws.repartition(10).map(_._2),
+              rs.map(_._2)
+            )
 
           /* Reproject into WebMercator, the default for VTs */
           val wmFeats: RDD[osm.OSMFeature] =
@@ -74,7 +79,7 @@ object IO extends CommandApp(
 
           /* Associated each Feature with a SpatialKey */
           val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
-            VectorPipe.toGrid(Clip.byHybrid, VectorPipe.log4j, layout, wmFeats)
+            VectorPipe.toGrid(Clip.byHybrid, VectorPipe.logToLog4j, layout, wmFeats)
 
           /* Create the VectorTiles */
           val tiles: RDD[(SpatialKey, VectorTile)] =
