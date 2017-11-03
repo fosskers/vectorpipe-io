@@ -31,7 +31,7 @@ object IO extends CommandApp(
     val layerO = Opts.option[String]("layer", help = "Name of the output Layer")
     val localF = Opts.flag("local", help = "Is this to be run locally, not on EMR?").orFalse
 
-    (orcO |@| bucketO |@| prefixO |@| layerO |@| localF).map { (orc, bucket, prefix, layer, local) =>
+    (orcO, bucketO, prefixO, layerO, localF).mapN { (orc, bucket, prefix, layer, local) =>
 
       println(s"ORC: ${orc}")
       println(s"OUTPUT: ${bucket}/${prefix}")
@@ -41,6 +41,8 @@ object IO extends CommandApp(
       val conf = new SparkConf()
         .setIfMissing("spark.master", "local[*]")
         .setAppName("vp-orc-io")
+        .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+        .set("spark.kryo.registrator", classOf[geotrellis.spark.io.kryo.KryoRegistrator].getName)
 
       implicit val ss: SparkSession = SparkSession.builder
         .config(conf)
@@ -67,7 +69,7 @@ object IO extends CommandApp(
           /* Assumes that OSM ORC is in LatLng */
           val latlngFeats: RDD[osm.OSMFeature] =
             osm.toFeatures(
-              VectorPipe.logToLog4j,
+              VectorPipe.logNothing,
               ns.repartition(100).map(_._2),
               ws.repartition(10).map(_._2),
               rs.map(_._2)
@@ -79,7 +81,7 @@ object IO extends CommandApp(
 
           /* Associated each Feature with a SpatialKey */
           val fgrid: RDD[(SpatialKey, Iterable[osm.OSMFeature])] =
-            VectorPipe.toGrid(Clip.byHybrid, VectorPipe.logToLog4j, layout, wmFeats)
+            VectorPipe.toGrid(Clip.byHybrid, VectorPipe.logNothing, layout, wmFeats)
 
           /* Create the VectorTiles */
           val tiles: RDD[(SpatialKey, VectorTile)] =

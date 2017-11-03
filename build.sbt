@@ -2,25 +2,29 @@ name := """vp-io-test"""
 
 version := "1.0.0"
 
-scalaVersion := "2.11.11"
+scalaVersion in ThisBuild := "2.11.11"
 
 /* To massage `cats` a little bit */
 scalacOptions := Seq(
+  "-deprecation",
   "-Ypartial-unification"
 )
+
+/* Fixes Spark breakage with `sbt run` as of sbt-1.0.2 */
+fork in run := true
 
 /* For `decline` dependency */
 resolvers += Resolver.bintrayRepo("bkirwi", "maven")
 
 libraryDependencies ++= Seq(
   "com.azavea"                  %% "vectorpipe"                  % "1.0.0-SNAPSHOT",
-  "com.monovore"                %% "decline"                     % "0.4.0-M1",
+  "com.monovore"                %% "decline"                     % "0.4.0-RC1",
   "org.apache.spark"            %% "spark-hive"                  % "2.2.0" % "provided",
   "org.locationtech.geotrellis" %% "geotrellis-s3"               % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-spark"            % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-vector"           % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-vectortile"       % "1.2.0-SNAPSHOT",
-  "org.typelevel"               %% "cats-core"                   % "1.0.0-MF"
+  "org.typelevel"               %% "cats-core"                   % "1.0.0-RC1"
 )
 
 /* Allow `run` to be used with Spark code, while assembling fat JARs w/o Spark bundled */
@@ -40,3 +44,4 @@ assemblyMergeStrategy in assembly := {
 // run --orc s3://vectortiles/orc/europe/andorra.orc --bucket vectortiles --key orc-catalog --layer andorra --local
 // run --orc /home/colin/code/playground/scala/orc/ireland.orc --bucket vectortiles --key orc-catalog --layer ireland --local
 // run --orc /home/colin/code/azavea/vp-io-test/georgia.orc --bucket vectortiles --key orc-catalog --layer georgia --local
+// run --orc /home/colin/code/azavea/vp-io-test/data/turkmenistan.orc --bucket vectortiles --key orc-catalog --layer turkmenistan
