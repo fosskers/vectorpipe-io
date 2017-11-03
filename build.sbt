@@ -14,13 +14,13 @@ resolvers += Resolver.bintrayRepo("bkirwi", "maven")
 
 libraryDependencies ++= Seq(
   "com.azavea"                  %% "vectorpipe"                  % "1.0.0-SNAPSHOT",
-  "com.monovore"                %% "decline"                     % "0.3.0",
+  "com.monovore"                %% "decline"                     % "0.4.0-M1",
   "org.apache.spark"            %% "spark-hive"                  % "2.2.0" % "provided",
   "org.locationtech.geotrellis" %% "geotrellis-s3"               % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-spark"            % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-vector"           % "1.2.0-SNAPSHOT",
   "org.locationtech.geotrellis" %% "geotrellis-vectortile"       % "1.2.0-SNAPSHOT",
-  "org.typelevel"               %% "cats"                        % "0.9.0"
+  "org.typelevel"               %% "cats-core"                   % "1.0.0-MF"
 )
 
 /* Allow `run` to be used with Spark code, while assembling fat JARs w/o Spark bundled */
